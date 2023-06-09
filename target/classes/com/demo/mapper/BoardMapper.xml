@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+ <mapper namespace="com.demo.mapper.BoardMapper">
+ 
+ <!-- parameterType 속성은 생략이 가능하지만, 학습차원에서 사용하기 바람 -->
+ 
+	<insert id="insert" parameterType="com.demo.domain.BoardVO">
+	 	insert into tbl_board(bno, title, writer, content)
+	 	values(SEQ_BOARD.nextval, #{title}, #{writer}, #{content})
+	</insert>
+	
+	<!-- select문 사용시 resultType 또는 resultMap 중 하나는 필수. 일반적으로는 resultType 사용 -->
+	<select id="getList" resultType="com.demo.domain.BoardVO">
+		SELECT bno, title, writer, content, regdate, updateddate FROM tbl_board ORDER BY regdate desc
+	</select>
+	
+	<!-- 검색조건 작업 -->
+	<sql id="criteria">
+		<trim prefix="(" suffix=") AND " prefixOverrides="OR"> <!-- trim 태그 sql 구문 중에 맨앞에 OR가 존재하면 제거 -->
+			<foreach collection="typeArr" item="type">
+				<trim prefix="OR">
+					<choose>
+						<when test="type == 'T'.toString()">title like '%' || #{keyword} || '%'</when>
+						<when test="type == 'W'.toString()">writer like '%' || #{keyword} || '%'</when>
+						<when test="type == 'C'.toString()">content like '%' || #{keyword} || '%'</when>
+					</choose>
+				</trim>
+			</foreach>
+		</trim>
+	</sql>
+	
+	<!-- 조건식 sql 사용 -->
+	<select id="getListWithPaging" resultType="com.demo.domain.BoardVO" parameterType="com.demo.domain.Criteria">
+		SELECT RN, bno, title, content, writer, regdate, updateddate
+		FROM (
+				SELECT /*+INDEX_DESC(tbl_board pk_board) */
+						ROWNUM RN, bno, title, content, writer, regdate, updateddate
+				FROM TBL_BOARD
+				WHERE
+					<include refid="criteria"></include>	
+		<![CDATA[		
+					ROWNUM <= #{pageNum} * #{amount}
+				
+				
+			)
+		WHERE RN > (#{pageNum}-1) * #{amount}
+		]]>
+		
+	</select>
+	
+	<!-- 조건식 sql 사용 -->
+	<select id="getTotalCount" resultType="int" parameterType="com.demo.domain.Criteria">
+		select count(*) from tbl_board
+		where
+			<include refid="criteria"></include> 
+			bno > 0
+	</select>
+	
+	<select id="get" parameterType="Long" resultType="com.demo.domain.BoardVO">
+		SELECT bno, title, writer, content, regdate, updateddate FROM tbl_board WHERE bno = #{bno}  
+	</select>
+	
+	<update id="modify" parameterType="com.demo.domain.BoardVO">
+		UPDATE tbl_board
+		SET
+		title = #{title},
+		content = #{content},
+		updateddate = sysdate
+		WHERE bno = #{bno}
+	</update>
+	
+	<delete id="delte" parameterType="Long">
+		DELETE FROM tbl_board
+		WHERE bno = #{bno}
+	</delete>
+
+  </mapper>
